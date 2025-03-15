@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:math';
-
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // Required for compute() function
 import 'package:flutter/material.dart';
-import 'package:isolate_learning/functions.dart';
+import 'package:isolate_learning/functions.dart'; // Contains our heavy computation function
 
+/// A widget that demonstrates the importance of using Isolates for heavy computations
+/// by showing the difference between running tasks on the main thread vs background thread
 class LaggyUIExample extends StatefulWidget {
   const LaggyUIExample({super.key});
 
@@ -14,23 +15,25 @@ class LaggyUIExample extends StatefulWidget {
 
 class _LaggyUIExampleState extends State<LaggyUIExample>
     with SingleTickerProviderStateMixin {
-  Color _bgColor = Colors.blue;
-  int _result = 0;
-  double _rotation = 0.0;
-
-  bool _isComputing = false;
+  // State variables
+  Color _bgColor = Colors.blue; // Background color
+  int _result = 0; // Result of heavy computation
+  double _rotation = 0.0; // Rotation angle for animation
+  bool _isComputing = false; // Flag to track computation status
 
   @override
   void initState() {
     super.initState();
-    // Start the timer when the widget initializes
+    // Create a timer for continuous rotation animation
+    // Updates every 50ms for smooth animation
     Timer.periodic(Duration(milliseconds: 50), (timer) {
       setState(() {
         _rotation += 0.1; // Increment rotation angle
       });
     });
 
-    // Start the timer when the widget initializes
+    // Create a timer for background color changes
+    // Updates every second
     Timer.periodic(Duration(seconds: 1), (timer) {
       setState(() {
         _changeColor();
@@ -38,12 +41,7 @@ class _LaggyUIExampleState extends State<LaggyUIExample>
     });
   }
 
-  @override
-  void dispose() {
-    // Cancel the timer when the widget is disposed
-    super.dispose();
-  }
-
+  /// Generates a random background color
   void _changeColor() {
     setState(() {
       _bgColor = Color.fromRGBO(
@@ -55,19 +53,32 @@ class _LaggyUIExampleState extends State<LaggyUIExample>
     });
   }
 
+  /// Runs heavy computation on the main thread
+  /// WARNING: This will block the UI and freeze animations
   int _runHeavyTask() {
     setState(() {
-      _result = findLargePrime(20000); // This will block the UI
+      // This runs synchronously on the main thread
+      // It will block all UI updates until completion
+      _result = findLargePrime(20000);
     });
     return _result;
   }
 
+  /// Runs heavy computation in a separate isolate
+  /// RECOMMENDED: This keeps the UI responsive
   void _runHeavyTaskWithIsolate() async {
+    // Show loading indicator
     setState(() => _isComputing = true);
 
-    final result =
-        await compute(findLargePrime, 20000); // Runs in a background isolate
+    // compute() is a Flutter helper that:
+    // 1. Creates a new isolate
+    // 2. Runs the specified function (findLargePrime) in that isolate
+    // 3. Passes the argument (20000) to the function
+    // 4. Returns the result back to the main isolate
+    // 5. Automatically disposes the isolate when done
+    final result = await compute(findLargePrime, 20000);
 
+    // Update UI with result
     setState(() {
       _result = result;
       _isComputing = false;
@@ -78,11 +89,12 @@ class _LaggyUIExampleState extends State<LaggyUIExample>
   Widget build(BuildContext context) {
     return Scaffold(
       body: AnimatedContainer(
-        duration: Duration(milliseconds: 500), // Update duration to match timer
+        duration: Duration(milliseconds: 500),
         color: _bgColor,
         child: Column(
           children: [
-            SizedBox(height: 100), // Add some padding from top
+            // Spinning rectangle demonstration
+            SizedBox(height: 100),
             Center(
               child: Transform.rotate(
                 angle: _rotation,
@@ -102,16 +114,19 @@ class _LaggyUIExampleState extends State<LaggyUIExample>
                 ),
               ),
             ),
+            // UI Controls
             Expanded(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // Button to run computation on main thread
                     ElevatedButton(
                       onPressed: _runHeavyTask,
                       child: Text("Run Heavy Computation"),
                     ),
                     SizedBox(height: 20),
+                    // Button to run computation in isolate
                     ElevatedButton(
                       onPressed: _runHeavyTaskWithIsolate,
                       child: _isComputing
@@ -122,6 +137,7 @@ class _LaggyUIExampleState extends State<LaggyUIExample>
                           : Text("Run Heavy Computation With Isolate"),
                     ),
                     SizedBox(height: 20),
+                    // Display computation result
                     Text(
                       "Result: $_result",
                       style:
